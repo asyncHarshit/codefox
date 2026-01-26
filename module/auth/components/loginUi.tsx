@@ -5,6 +5,7 @@ import { signIn } from '@/lib/auth-client';
 import { redirect } from 'next/navigation';
 
 
+
 const LoginUi = () => {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -24,6 +25,7 @@ const LoginUi = () => {
     }
   };
 
+
   return (
     <div className="dark min-h-screen bg-background flex">
       {/* Left Side - Branding */}
@@ -40,7 +42,7 @@ const LoginUi = () => {
         <div className="max-w-lg relative z-10 space-y-8">
           <div>
             <h1 className="text-7xl font-bold text-foreground mb-3 tracking-tight leading-none">
-              CodeFox
+              codefox
             </h1>
             <div className="h-1 w-24 bg-primary rounded-full" />
           </div>
