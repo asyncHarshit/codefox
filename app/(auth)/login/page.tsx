@@ -1,9 +1,12 @@
-import React from 'react'
+import LoginUi from '@/module/auth/components/loginUi'
+import { requireUnAuth } from '@/module/auth/utils/auth-util'
 
-const LoginPage = () => {
+
+const LoginPage = async() => {
+  await requireUnAuth()
   return (
     <div>
-        <LoginUI/>
+        <LoginUi/>
     </div>
     
   )
