@@ -4,8 +4,8 @@ import { fetchUserContributions , getGithubToken } from "@/lib/github"
 import { auth } from "@/lib/auth"
 import { headers } from "next/headers"
 import { Octokit } from "octokit"
-import { db } from "@/lib/db"
-
+import { unstable_cache } from "next/cache";
+import { getCachedContributionStats } from "@/lib/github-cache"
 
 export async function getDashboardStats(){
     try {
@@ -88,9 +88,9 @@ export async function getMonthlyActivity(){
             "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
         ]
 
-        // initialise last 12 months data
 
-        for(let i=12;i>0;i--){
+
+        for(let i=5;i>0;i--){
             const date = new Date(now.getFullYear() , now.getMonth() - i, 1);
             const monthKey = monthNames[date.getMonth()];
             monthlyData[monthKey] = {
@@ -100,15 +100,31 @@ export async function getMonthlyActivity(){
             }
 
         }
+        type ContributionDay = {
+        date: string;
+        contributionCount: number;
+        };
 
-        calender.weeks.forEach(week => {
-            week.contributionDays.forEach(day => {
-                const date = new Date(day.date);
-                const monthKey = monthNames[date.getMonth()];
-                if(monthlyData[monthKey]){
-                    monthlyData[monthKey].commits += day.contributionCount;
-                }
-            })
+        type ContributionWeek = {
+        contributionDays: ContributionDay[];
+        };
+
+        type ContributionCalendar = {
+        totalContributions: number;
+        weeks: ContributionWeek[];
+        };
+
+        const calendar = calender as ContributionCalendar;
+
+        calendar.weeks.forEach((week: ContributionWeek) => {
+        week.contributionDays.forEach((day: ContributionDay) => {
+            const date = new Date(day.date);
+            const monthKey = monthNames[date.getMonth()];
+
+            if (monthlyData[monthKey]) {
+            monthlyData[monthKey].commits += day.contributionCount;
+            }
+        });
         });
         
         const twelveMonthsAgo = new Date();
@@ -119,7 +135,7 @@ export async function getMonthlyActivity(){
             const sampleReviews = [];
             const now = new Date();
             for(let i=0;i<50;i++){
-            const randomDaysAgo = Math.floor(Math.random() * 365);
+            const randomDaysAgo = Math.floor(Math.random() * 180);
             const reviewDate = new Date(now);
             reviewDate.setDate(reviewDate.getDate() - randomDaysAgo);
             sampleReviews.push({
@@ -162,4 +178,31 @@ export async function getMonthlyActivity(){
     } catch (error) {
         
     }
+}
+
+
+export async function getContributionStats() {
+try {
+const session = await auth.api.getSession({
+headers: await headers(),
+});
+
+
+if (!session) throw new Error("No session found");
+
+
+const token = await getGithubToken();
+const octokit = new Octokit({ auth: token });
+
+
+const { data: user } = await octokit.rest.users.getAuthenticated();
+const username = user.login!;
+
+
+// ✅ cached call
+return await getCachedContributionStats(token, username);
+} catch (error) {
+console.error("Error in getContributionStats:", error);
+return null;
+}
 }
