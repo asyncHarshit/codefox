@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef, JSXElementConstructor, Key, ReactElement, ReactNode, ReactPortal } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ExternalLink, Star, Search, GitFork, Eye, AlertCircle, Loader2 } from "lucide-react";
+import { ExternalLink, Star, Search, AlertCircle, Loader2 } from "lucide-react";
 import { useRepositories } from "@/module/repository/hooks/use-repository";
+import { useConnectRepository } from "@/module/repository/hooks/use-connect-repo";
 
 interface Repository {
   id: number;
@@ -26,17 +27,19 @@ const RepositoryPage = () => {
   const [localConnectedIds, setLocalConnectedIds] = useState<Set<number>>(new Set());
   const observerTarget = useRef<HTMLDivElement>(null);
 
+  const { mutate: connectRepo } = useConnectRepository();
+
   const allRepositories = data?.pages.flatMap((page) => page) || [];
 
   // Filter repositories based on search query
   const filteredRepositories = allRepositories.filter((repo) => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
-	return (
-	  repo.name.toLowerCase().includes(query) ||
-	  repo.description?.toLowerCase().includes(query) ||
-	  repo.topics?.some((topic: string) => topic.toLowerCase().includes(query))
-	);
+    return (
+      repo.name.toLowerCase().includes(query) ||
+      repo.description?.toLowerCase().includes(query) ||
+      repo.topics?.some((topic: string) => topic.toLowerCase().includes(query))
+    );
   });
 
   // Infinite scroll observer
@@ -58,16 +61,12 @@ const RepositoryPage = () => {
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const handleConnect = (repo: Repository) => {
-    setLocalConnectedIds((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(repo.id)) {
-        newSet.delete(repo.id);
-      } else {
-        newSet.add(repo.id);
-      }
-      return newSet;
+    setLocalConnectedIds((prev) => new Set(prev).add(repo.id));
+    connectRepo({
+      owner: repo.full_name.split("/")[0],
+      repo: repo.name,
+      githubId: repo.id,
     });
-    // TODO: Implement actual connection logic
     console.log("Connecting to repository:", repo.name);
   };
 
@@ -141,7 +140,7 @@ const RepositoryPage = () => {
           </div>
         )}
 
-        {/* Repository Grid */}
+        {/* Repository List */}
         {!isLoading && !isError && (
           <>
             {filteredRepositories.length === 0 ? (
@@ -223,22 +222,22 @@ const RepositoryPage = () => {
 
                           {/* Topics */}
                           {repo.topics && repo.topics.length > 0 && (
-							<div className="flex flex-wrap gap-2">
-							  {repo.topics.slice(0, 5).map((topic: string) => (
-								<Badge
-								  key={topic}
-								  variant="secondary"
-								  className="text-xs px-2.5 py-0.5"
-								>
-								  {topic}
-								</Badge>
-							  ))}
-							  {repo.topics.length > 5 && (
-								<Badge variant="outline" className="text-xs px-2.5 py-0.5">
-								  +{repo.topics.length - 5} more
-								</Badge>
-							  )}
-							</div>
+                            <div className="flex flex-wrap gap-2">
+                              {repo.topics.slice(0, 5).map((topic: string) => (
+                                <Badge
+                                  key={topic}
+                                  variant="secondary"
+                                  className="text-xs px-2.5 py-0.5"
+                                >
+                                  {topic}
+                                </Badge>
+                              ))}
+                              {repo.topics.length > 5 && (
+                                <Badge variant="outline" className="text-xs px-2.5 py-0.5">
+                                  +{repo.topics.length - 5} more
+                                </Badge>
+                              )}
+                            </div>
                           )}
                         </div>
 
