@@ -3,7 +3,8 @@
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
-import { getRepositories } from "@/lib/github";
+import { createWebHook, getRepositories } from "@/lib/github";
+import { string } from "zod";
 
 
 export const fetchRepositories = async (page : number = 1 , perPage : number = 10)=>{
@@ -28,3 +29,46 @@ export const fetchRepositories = async (page : number = 1 , perPage : number = 1
           isConnected : connectedReposId.has(BigInt(repo.id))
      }))
 }
+
+export const connectRepository = async (
+  owner: string,
+  repo: string,
+  githubId: number
+) => {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  if (!session) {
+    throw new Error("Unauthorized");
+  }
+
+  const webhook = await createWebHook(owner, repo);
+
+  if (!webhook) {
+    throw new Error("Failed to create webhook");
+  }
+
+  await db.repository.upsert({
+    where: {
+      githubId: BigInt(githubId),
+    },
+    update: {
+      name: repo,
+      owner,
+      fullName: `${owner}/${repo}`,
+      url: `https://github.com/${owner}/${repo}`,
+      userId: session.user.id,
+    },
+    create: {
+      githubId: BigInt(githubId),
+      name: repo,
+      owner,
+      fullName: `${owner}/${repo}`,
+      url: `https://github.com/${owner}/${repo}`,
+      userId: session.user.id,
+    },
+  });
+
+  return webhook;
+};
