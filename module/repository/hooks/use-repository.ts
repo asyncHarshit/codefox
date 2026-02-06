@@ -4,18 +4,19 @@ import { fetchRepositories } from "..";
 
 export const useRepositories = () => {
   return useInfiniteQuery({
-    queryKey: ["repositories"],
+    queryKey: ["repositories", "infinite"],
 
     queryFn: async ({ pageParam = 1 }) => {
-      const data = await fetchRepositories(pageParam, 10);
-      return data;
+      const res = await fetchRepositories(pageParam, 10)
+
+      return res
     },
 
     getNextPageParam: (lastPage, allPages) => {
-      if (lastPage.length < 10) return undefined;
-      return allPages.length + 1;
+      if (!lastPage || lastPage.length < 10) return undefined
+      return allPages.length + 1
     },
 
     initialPageParam: 1,
-  });
-};
+  })
+}
