@@ -168,7 +168,11 @@ export async function getRepoFileContent(
         repo,
         path: item.path,
       });
-      if (!Array.isArray(fileData) && fileData.type === "file" && fileData.content) {
+      if (
+        !Array.isArray(fileData) &&
+        fileData.type === "file" &&
+        fileData.content
+      ) {
         // Filter out non-code files if needed (images, etc.)
         // For now, include everything that looks like text
         if (!item.path.match(/\.(png|jpg|jpeg|gif|svg|ico|pdf|zip|tar|gz)$/i)) {
@@ -178,12 +182,70 @@ export async function getRepoFileContent(
           });
         }
       }
-    }else if(item.type === "dir"){
-        const subFiles = await getRepoFileContent(token , owner , repo , item.path);
-        files = files.concat(subFiles);
+    } else if (item.type === "dir") {
+      const subFiles = await getRepoFileContent(token, owner, repo, item.path);
+      files = files.concat(subFiles);
     }
-
-    
   }
   return files;
+}
+
+export async function getPullRequestDiff(
+  token: string,
+  owner: string,
+  repo: string,
+  prNumber: number,
+) {
+  const octokit = new Octokit({ auth: token });
+
+  // PR metadata
+  const { data: pr } = await octokit.rest.pulls.get({
+    owner,
+    repo,
+    pull_number: prNumber,
+  });
+
+  // RAW diff (correct endpoint)
+  const diffResponse = await octokit.request(
+    "GET /repos/{owner}/{repo}/pulls/{pull_number}",
+    {
+      owner,
+      repo,
+      pull_number: prNumber,
+      headers: {
+        accept: "application/vnd.github.v3.diff",
+      },
+    }
+  );
+
+  return {
+    diff: String(diffResponse.data),
+    title: pr.title,
+    description: pr.body || "",
+  };
+}
+
+
+export async function postReviewComment(
+  token: string,
+  owner: string,
+  repo: string,
+  prNumber: number,
+  review: string,
+) {
+  const octoKit = new Octokit({ auth: token });
+
+  await octoKit.rest.issues.createComment({
+    owner,
+    repo,
+    issue_number: prNumber,
+    body: `![CodeFox](https://res.cloudinary.com/daoacmphc/image/upload/v1770499385/uo6hcxvx0venxniya0um.png)
+	# CodeFox - AI Powered Code Reviewer 
+	
+	${review}
+
+	
+	## Powered by CodeFox
+	`,
+  });
 }

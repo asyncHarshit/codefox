@@ -19,13 +19,13 @@ model Test {
 }
 
 model User {
-  id            String    @id
+  id            String       @id
   name          String
   email         String
-  emailVerified Boolean   @default(false)
+  emailVerified Boolean      @default(false)
   image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
   sessions      Session[]
   accounts      Account[]
   repositories  repository[]
@@ -34,22 +34,38 @@ model User {
   @@map("user")
 }
 
-model repository{
-  id  String @id @default(cuid())
-  githubId BigInt @unique
-  owner String
-  name String
-  fullName String
-  url  String
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+model repository {
+  id        String   @id @default(cuid())
+  githubId  BigInt   @unique
+  owner     String
+  name      String
+  fullName  String
+  url       String
+  userId    String
+  reviews   Review[]
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-
   @@index([userId])
   @@map("repository")
+}
 
+model Review {
+  id           String     @id @default(cuid())
+  repositoryId String
+  repository   repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  prNumber Int
+  prTitle  String
+  prUrl    String
+  review   String @db.Text
+  status   String @default("completed")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([repositoryId])
 }
 
 model Session {
