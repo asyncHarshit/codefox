@@ -24,10 +24,7 @@ export const getGithubToken = async () => {
   return account.accessToken;
 };
 
-export async function fetchUserContributions(
-  token: string,
-  username: string
-) {
+export async function fetchUserContributions(token: string, username: string) {
   const octokit = new Octokit({ auth: token });
 
   const query = `
@@ -50,7 +47,7 @@ export async function fetchUserContributions(
 
   try {
     const response = await octokit.graphql<any>(query, { username });
-    console.log(username)
+    console.log(username);
     return response.user.contributionsCollection.contributionCalendar;
   } catch (error) {
     console.error("GitHub GraphQL error:", error);
@@ -60,7 +57,7 @@ export async function fetchUserContributions(
 
 export const getRepositories = async (
   page: number = 1,
-  perPage: number = 10
+  perPage: number = 10,
 ) => {
   const token = await getGithubToken(); // ✅ MUST await
 
@@ -90,9 +87,7 @@ export const createWebHook = async (owner: string, repo: string) => {
     repo,
   });
 
-  const existingHook = hooks.find(
-    (hook) => hook.config?.url === webhookURL
-  );
+  const existingHook = hooks.find((hook) => hook.config?.url === webhookURL);
 
   if (existingHook) {
     return existingHook;
@@ -112,34 +107,83 @@ export const createWebHook = async (owner: string, repo: string) => {
   return data;
 };
 
+export const deleteWebHook = async (owner: string, repo: string) => {
+  const token = await getGithubToken();
+  const octoKit = new Octokit({ auth: token });
+  const webhookURL = `${process.env.APP_BASE_URL}/api/webhook/github`;
 
-export const deleteWebHook = async ( owner : string , repo : string)=>{
-    const token = await  getGithubToken();
-    const octoKit = new Octokit({auth : token});
-    const webhookURL = `${process.env.APP_BASE_URL}/api/webhook/github`
+  try {
+    const { data: hooks } = await octoKit.rest.repos.listWebhooks({
+      owner,
+      repo,
+    });
 
-    try {
+    const hookToDelete = hooks.find((hook) => hook.config.url === webhookURL);
+    if (hookToDelete) {
+      await octoKit.rest.repos.deleteWebhook({
+        owner,
+        repo,
+        hook_id: hookToDelete.id,
+      });
 
-        const {data : hooks} = await octoKit.rest.repos.listWebhooks({
-            owner,
-            repo
-        });
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error("Error in deleting webhook: ", error);
+    return false;
+  }
+};
 
-        const hookToDelete = hooks.find(hook => hook.config.url === webhookURL);
-        if(hookToDelete){
-            await octoKit.rest.repos.deleteWebhook({
-                owner,
-                repo,
-                hook_id : hookToDelete.id
-            })
+export async function getRepoFileContent(
+  token: string,
+  owner: string,
+  repo: string,
+  path: string = "",
+): Promise<{ path: string; content: string }[]> {
+  const octokit = new Octokit({ auth: token });
+  const { data } = await octokit.rest.repos.getContent({
+    owner,
+    repo,
+    path,
+  });
 
-            return true;
+  if (!Array.isArray(data)) {
+    if (data.type === "file" && data.content) {
+      return [
+        {
+          path: data.path,
+          content: Buffer.from(data.content, "base64").toString("utf-8"),
+        },
+      ];
+    }
+    return [];
+  }
+
+  let files: { path: string; content: string }[] = [];
+  for (const item of data) {
+    if (item.type === "file") {
+      const { data: fileData } = await octokit.rest.repos.getContent({
+        owner,
+        repo,
+        path: item.path,
+      });
+      if (!Array.isArray(fileData) && fileData.type === "file" && fileData.content) {
+        // Filter out non-code files if needed (images, etc.)
+        // For now, include everything that looks like text
+        if (!item.path.match(/\.(png|jpg|jpeg|gif|svg|ico|pdf|zip|tar|gz)$/i)) {
+          files.push({
+            path: item.path,
+            content: Buffer.from(fileData.content, "base64").toString("utf-8"),
+          });
         }
-        return false;
-    } catch (error) {
-        console.error("Error in deleting webhook: " , error);
-        return false;
-        
+      }
+    }else if(item.type === "dir"){
+        const subFiles = await getRepoFileContent(token , owner , repo , item.path);
+        files = files.concat(subFiles);
     }
 
+    
+  }
+  return files;
 }
