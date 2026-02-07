@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { createWebHook, getRepositories } from "@/lib/github";
 import { string } from "zod";
+import { inngest } from "@/inngest/client";
 
 
 export const fetchRepositories = async (page : number = 1 , perPage : number = 10)=>{
@@ -69,6 +70,21 @@ export const connectRepository = async (
       userId: session.user.id,
     },
   });
+
+  try {
+    await inngest.send({
+      name : "repository.connected",
+      data : {
+        owner,
+        repo,
+        userId : session.user.id
+      }
+    })
+    
+  } catch (error) {
+    console.error("Failed to indexing repository" , error)
+    
+  }
 
   return webhook;
 };
