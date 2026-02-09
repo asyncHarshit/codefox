@@ -239,8 +239,7 @@ export async function postReviewComment(
     owner,
     repo,
     issue_number: prNumber,
-    body: `![CodeFox](https://res.cloudinary.com/daoacmphc/image/upload/v1770499385/uo6hcxvx0venxniya0um.png)
-	# CodeFox - AI Powered Code Reviewer 
+    body: `![CodeFox](https://res.cloudinary.com/daoacmphc/image/upload/v1770572061/zvilzw4rvuiphgkb8cpw.png)
 	
 	${review}
 
