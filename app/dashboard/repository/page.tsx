@@ -1,7 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,14 +28,40 @@ interface Repository {
 }
 
 const RepositoryPage = () => {
-  const { data, isLoading, isError, fetchNextPage, hasNextPage, isFetchingNextPage } = useRepositories();
+  const {
+    data,
+    isLoading,
+    isError,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useRepositories();
   const [searchQuery, setSearchQuery] = useState("");
-  const [localConnectedIds, setLocalConnectedIds] = useState<Set<number>>(new Set());
   const observerTarget = useRef<HTMLDivElement>(null);
 
   const { mutate: connectRepo } = useConnectRepository();
 
   const allRepositories = data?.pages.flatMap((page) => page) || [];
+
+  function RepoCardShimmer() {
+    return (
+      <div className="rounded-xl border border-border/40 p-6 flex justify-between items-center">
+        {/* Left content */}
+        <div className="space-y-3 w-full max-w-lg">
+          <div className="h-5 w-40 shimmer rounded" />
+          <div className="h-4 w-64 shimmer rounded" />
+          <div className="h-3 w-32 shimmer rounded" />
+          <div className="h-3 w-12 shimmer rounded" />
+        </div>
+
+        {/* Actions */}
+        <div className="flex flex-col gap-2 ml-6">
+          <div className="h-9 w-28 shimmer rounded-lg" />
+          <div className="h-9 w-28 shimmer rounded-lg" />
+        </div>
+      </div>
+    );
+  }
 
   // Filter repositories based on search query
   const filteredRepositories = allRepositories.filter((repo) => {
@@ -50,7 +82,7 @@ const RepositoryPage = () => {
           fetchNextPage();
         }
       },
-      { threshold: 0.1 }
+      { threshold: 0.1 },
     );
 
     if (observerTarget.current) {
@@ -61,26 +93,25 @@ const RepositoryPage = () => {
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const handleConnect = (repo: Repository) => {
-    setLocalConnectedIds((prev) => new Set(prev).add(repo.id));
+    if (repo.isConnected) return;
+
     connectRepo({
       owner: repo.full_name.split("/")[0],
       repo: repo.name,
       githubId: repo.id,
     });
-    console.log("Connecting to repository:", repo.name);
-  };
-
-  const isConnected = (repoId: number) => {
-    return localConnectedIds.has(repoId);
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-background via-background to-muted/20">
+    <div className="min-h-screen overflow-x-hidden bg-linear-to-br from-background via-background to-muted/20">
+
       {/* Header Section */}
       <div className="sticky top-0 z-50 backdrop-blur-xl bg-background/80 border-b border-border/50">
-        <div className="container mx-auto px-4 py-4">
+        <div className="container mx-auto px-4 py-6 overflow-x-hidden">
+
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex items-start justify-between gap-6 min-w-0">
+
               <div className="space-y-1">
                 <h1 className="text-4xl font-bold tracking-tight bg-linear-to-r from-primary via-secondary to-primary bg-clip-text text-transparent">
                   Repositories
@@ -89,11 +120,7 @@ const RepositoryPage = () => {
                   Discover and connect to your favorite repositories
                 </p>
               </div>
-              <div className="flex items-center gap-2">
-                <Badge variant="secondary" className="px-3 py-1">
-                  {filteredRepositories.length} repos
-                </Badge>
-              </div>
+              
             </div>
 
             {/* Search Bar */}
@@ -115,11 +142,10 @@ const RepositoryPage = () => {
       <div className="container mx-auto px-4 py-6">
         {/* Loading State */}
         {isLoading && (
-          <div className="flex items-center justify-center min-h-[400px]">
-            <div className="text-center space-y-4">
-              <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
-              <p className="text-muted-foreground">Loading repositories...</p>
-            </div>
+          <div className="space-y-4 min-h-[400px]">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <RepoCardShimmer key={i} />
+            ))}
           </div>
         )}
 
@@ -133,7 +159,8 @@ const RepositoryPage = () => {
                   <CardTitle>Error Loading Repositories</CardTitle>
                 </div>
                 <CardDescription>
-                  There was an error fetching repositories. Please try again later.
+                  There was an error fetching repositories. Please try again
+                  later.
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -148,7 +175,9 @@ const RepositoryPage = () => {
                 <div className="text-center space-y-4">
                   <Search className="h-12 w-12 text-muted-foreground mx-auto opacity-50" />
                   <div>
-                    <h3 className="text-lg font-semibold">No repositories found</h3>
+                    <h3 className="text-lg font-semibold">
+                      No repositories found
+                    </h3>
                     <p className="text-muted-foreground text-sm">
                       Try adjusting your search criteria
                     </p>
@@ -169,19 +198,23 @@ const RepositoryPage = () => {
                     <CardContent className="p-5">
                       <div className="flex items-start justify-between gap-6">
                         {/* Left side - Repository Info */}
-                        <div className="flex-1 space-y-2">
+                        <div className="flex-1 min-w-0 space-y-2">
+
                           {/* Header */}
                           <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1">
+                            <div className="flex-1 min-w-0">
+
                               <div className="flex items-center gap-2">
                                 <CardTitle className="text-xl font-semibold group-hover:text-primary transition-colors">
                                   {repo.name}
                                 </CardTitle>
                                 <Badge
-                                  variant={isConnected(repo.id) ? "default" : "outline"}
+                                  variant={
+                                    repo.isConnected ? "default" : "outline"
+                                  }
                                   className="shrink-0"
                                 >
-                                  {isConnected(repo.id) ? "Connected" : "Available"}
+                                  {repo.isConnected ? "Connected" : "Available"}
                                 </Badge>
                               </div>
                               <CardDescription className="text-sm mt-1">
@@ -204,7 +237,9 @@ const RepositoryPage = () => {
                                 <div
                                   className="w-3 h-3 rounded-full"
                                   style={{
-                                    backgroundColor: getLanguageColor(repo.language),
+                                    backgroundColor: getLanguageColor(
+                                      repo.language,
+                                    ),
                                   }}
                                 />
                                 <span className="text-muted-foreground font-medium">
@@ -233,7 +268,10 @@ const RepositoryPage = () => {
                                 </Badge>
                               ))}
                               {repo.topics.length > 5 && (
-                                <Badge variant="outline" className="text-xs px-2.5 py-0.5">
+                                <Badge
+                                  variant="outline"
+                                  className="text-xs px-2.5 py-0.5"
+                                >
                                   +{repo.topics.length - 5} more
                                 </Badge>
                               )}
@@ -245,12 +283,14 @@ const RepositoryPage = () => {
                         <div className="flex flex-col gap-2 shrink-0">
                           <Button
                             onClick={() => handleConnect(repo)}
-                            variant={isConnected(repo.id) ? "outline" : "default"}
+                            disabled={repo.isConnected}
+                            variant={repo.isConnected ? "outline" : "default"}
                             size="sm"
                             className="min-w-[120px]"
                           >
-                            {isConnected(repo.id) ? "Disconnect" : "Connect"}
+                            {repo.isConnected ? "Connected" : "Connect"}
                           </Button>
+
                           <Button
                             variant="outline"
                             size="sm"

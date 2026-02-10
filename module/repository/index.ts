@@ -4,8 +4,8 @@ import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { createWebHook, getRepositories } from "@/lib/github";
-import { string } from "zod";
 import { inngest } from "@/inngest/client";
+import { decrementRepositoryCount , incrementRepositoryCount } from "@/lib/user-count-uses";
 
 
 export const fetchRepositories = async (page : number = 1 , perPage : number = 10)=>{
@@ -60,6 +60,7 @@ export const connectRepository = async (
       fullName: `${owner}/${repo}`,
       url: `https://github.com/${owner}/${repo}`,
       userId: session.user.id,
+      isConnected : true
     },
     create: {
       githubId: BigInt(githubId),
@@ -68,8 +69,11 @@ export const connectRepository = async (
       fullName: `${owner}/${repo}`,
       url: `https://github.com/${owner}/${repo}`,
       userId: session.user.id,
+      isConnected : true
     },
   });
+
+  await incrementRepositoryCount(session.user.id)
 
   try {
     await inngest.send({
@@ -80,6 +84,8 @@ export const connectRepository = async (
         userId : session.user.id
       }
     })
+
+
     
   } catch (error) {
     console.error("Failed to indexing repository" , error)

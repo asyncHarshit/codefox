@@ -5,7 +5,7 @@ import { headers } from "next/headers";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { deleteWebHook } from "@/lib/github";
-import { success } from "zod";
+import { decrementRepositoryCount} from "@/lib/user-count-uses";
 
 export async function getUserProfile(){
     try {
@@ -131,6 +131,7 @@ export async function disconnectRepositories(repositoryId : string){
         }
 
         await deleteWebHook(repository.owner , repository.name)
+        await decrementRepositoryCount(session.user.id) 
 
         await db.repository.delete({
             where : {
@@ -168,6 +169,7 @@ export async function disconnectAllRepository(){
 
         await Promise.all(repositories.map(async (repo)=>{
             await deleteWebHook(repo.owner , repo.name)
+            await decrementRepositoryCount(session.user.id) 
         }))
 
         await db.repository.deleteMany({

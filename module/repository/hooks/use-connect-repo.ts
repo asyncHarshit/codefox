@@ -8,13 +8,15 @@ type ConnectRepositoryInput = {
   owner: string;
   repo: string;
   githubId: number;
+
 };
+
 
 export const useConnectRepository = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ owner, repo, githubId }: ConnectRepositoryInput) => {
+    mutationFn: ({ owner, repo, githubId}: ConnectRepositoryInput) => {
       return connectRepository(owner, repo, githubId);
     },
 
