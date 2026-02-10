@@ -1,85 +1,90 @@
 "use server"
 
-import { fetchUserContributions , getGithubToken } from "@/lib/github"
+import { fetchUserContributions, getGithubToken } from "@/lib/github"
 import { auth } from "@/lib/auth"
 import { headers } from "next/headers"
 import { Octokit } from "octokit"
-import { unstable_cache } from "next/cache";
 import { getCachedContributionStats } from "@/lib/github-cache"
+import { getUserCount} from "@/lib/user-count-uses"
 
-export async function getDashboardStats(){
+export async function getDashboardStats() {
     try {
         const session = await auth.api.getSession({
-            headers : await headers(),
+            headers: await headers(),
         })
-        if(!session){
+        if (!session) {
             throw new Error('No session found');
         }
-        const token = await getGithubToken();  
+        const token = await getGithubToken();
         const octokit = new Octokit({
-            auth : token
+            auth: token
         })
-        const {data : user} = await octokit.rest.users.getAuthenticated();
+        const { data: user } = await octokit.rest.users.getAuthenticated();
 
-        //TODO : fetch total connected repo from db
-        const totalRepos = 10;
-        
-        const calender = await fetchUserContributions(token , user.login!);
+        //TODO: fetch total connected repo from db
+        const data = await getUserCount(session.user.id);
+        console.log(data)
+
+        const calender = await fetchUserContributions(token, user.login!);
         const totalCommits = calender?.totalContributions || 0;
 
-        // count the prs form either db or github
-        const {data : prs} = await octokit.rest.search.issuesAndPullRequests({
-            q : `author:${user.login} is:pr`,
-            per_page : 1
+        // count the prs from either db or github
+        const { data: prs } = await octokit.rest.search.issuesAndPullRequests({
+            q: `author:${user.login} is:pr`,
+            per_page: 1
         })
         const totalPRs = prs.total_count;
-        // TODO : count the number of review done by AI
-        const totolreviews = 44;
+
+        
+        // CRITICAL FIX: reviewCounts is an object, not a number
+        // Calculate total reviews from the object
+        const totalReviews = data.reviewCount
+        const totalRepos = data.repositoryCount
+
 
         return {
             totalCommits,
             totalPRs,
-            totolreviews,
+            totalReviews,
             totalRepos
         }
     } catch (error) {
         console.error("Error in getDashboardStats: ", error);
         return {
-            totalCommits : 0,
-            totalPRs : 0,
-            totolreviews : 0,
-            totalRepos : 0
+            totalCommits: 0,
+            totalPRs: 0,
+            totalReviews: 0,
+            totalRepos: 0
         }
-        
     }
 }
 
-export async function getMonthlyActivity(){
+export async function getMonthlyActivity() {
     try {
         const session = await auth.api.getSession({
-            headers : await headers(),
+            headers: await headers(),
         })
-        if(!session){
+        if (!session) {
             throw new Error('No session found');
         }
-        const token = await getGithubToken();  
+        const token = await getGithubToken();
         const octokit = new Octokit({
-            auth : token
+            auth: token
         })
 
-        const {data : user} = await octokit.rest.users.getAuthenticated();
-        
-        const calender = await fetchUserContributions(token , user.login!);
+        const { data: user } = await octokit.rest.users.getAuthenticated();
 
-        if(!calender){
+        const calender = await fetchUserContributions(token, user.login!);
+
+        if (!calender) {
             return [];
         }
 
-        const monthlyData : {
-            [key : string] :{ 
-                commits : number;
-                prs : number;
-                reviews : number;
+        const monthlyData: {
+            [key: string]: {
+                commits: number;
+                prs: number;
+                reviews: number;
             }
         } = {}
         const now = new Date();
@@ -88,62 +93,60 @@ export async function getMonthlyActivity(){
             "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
         ]
 
-
-
-        for(let i=5;i>0;i--){
-            const date = new Date(now.getFullYear() , now.getMonth() - i, 1);
+        // Initialize last 6 months
+        for (let i = 5; i >= 0; i--) {
+            const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
             const monthKey = monthNames[date.getMonth()];
             monthlyData[monthKey] = {
-                commits : 0,
-                prs : 0,
-                reviews : 0
+                commits: 0,
+                prs: 0,
+                reviews: 0
             }
-
         }
+
         type ContributionDay = {
-        date: string;
-        contributionCount: number;
+            date: string;
+            contributionCount: number;
         };
 
         type ContributionWeek = {
-        contributionDays: ContributionDay[];
+            contributionDays: ContributionDay[];
         };
 
         type ContributionCalendar = {
-        totalContributions: number;
-        weeks: ContributionWeek[];
+            totalContributions: number;
+            weeks: ContributionWeek[];
         };
 
         const calendar = calender as ContributionCalendar;
 
         calendar.weeks.forEach((week: ContributionWeek) => {
-        week.contributionDays.forEach((day: ContributionDay) => {
-            const date = new Date(day.date);
-            const monthKey = monthNames[date.getMonth()];
+            week.contributionDays.forEach((day: ContributionDay) => {
+                const date = new Date(day.date);
+                const monthKey = monthNames[date.getMonth()];
 
-            if (monthlyData[monthKey]) {
-            monthlyData[monthKey].commits += day.contributionCount;
-            }
+                if (monthlyData[monthKey]) {
+                    monthlyData[monthKey].commits += day.contributionCount;
+                }
+            });
         });
-        });
-        
+
         const twelveMonthsAgo = new Date();
         twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
 
-        // TODO : reviews real data
-        const generateSampleReviews = ()=>{
+        // TODO: reviews real data
+        const generateSampleReviews = () => {
             const sampleReviews = [];
             const now = new Date();
-            for(let i=0;i<50;i++){
-            const randomDaysAgo = Math.floor(Math.random() * 180);
-            const reviewDate = new Date(now);
-            reviewDate.setDate(reviewDate.getDate() - randomDaysAgo);
-            sampleReviews.push({
-                createdAt : reviewDate
-            });
+            for (let i = 0; i < 50; i++) {
+                const randomDaysAgo = Math.floor(Math.random() * 180);
+                const reviewDate = new Date(now);
+                reviewDate.setDate(reviewDate.getDate() - randomDaysAgo);
+                sampleReviews.push({
+                    createdAt: reviewDate
+                });
             }
             return sampleReviews;
-
         }
 
         const reviews = generateSampleReviews()
@@ -156,8 +159,7 @@ export async function getMonthlyActivity(){
         })
 
         const { data: prs } = await octokit.rest.search.issuesAndPullRequests({
-            q: `author:${user.login} type:pr created:>${twelveMonthsAgo.toISOString().split("T")[0]
-                }`,
+            q: `author:${user.login} type:pr created:>${twelveMonthsAgo.toISOString().split("T")[0]}`,
             per_page: 100,
         });
 
@@ -169,42 +171,38 @@ export async function getMonthlyActivity(){
             }
         });
 
+        // Return array with proper structure
         return Object.keys(monthlyData).map((name) => ({
             name,
-            ...monthlyData[name]
-        }))
+            commits: monthlyData[name].commits,
+            prs: monthlyData[name].prs,
+            reviews: monthlyData[name].reviews
+        }));
 
-        
     } catch (error) {
-        
+        console.error("Error in getMonthlyActivity:", error);
+        return [];
     }
 }
 
-
 export async function getContributionStats() {
-try {
-const session = await auth.api.getSession({
-headers: await headers(),
-});
+    try {
+        const session = await auth.api.getSession({
+            headers: await headers(),
+        });
 
+        if (!session) throw new Error("No session found");
 
-if (!session) throw new Error("No session found");
+        const token = await getGithubToken();
+        const octokit = new Octokit({ auth: token });
 
+        const { data: user } = await octokit.rest.users.getAuthenticated();
+        const username = user.login!;
 
-const token = await getGithubToken();
-const octokit = new Octokit({ auth: token });
-
-
-const { data: user } = await octokit.rest.users.getAuthenticated();
-const username = user.login!;
-
-
-// ✅ cached call
-return await getCachedContributionStats(token, username);
-} catch (error) {
-console.error("Error in getContributionStats:", error);
-return null;
+        // ✅ cached call
+        return await getCachedContributionStats(token, username);
+    } catch (error) {
+        console.error("Error in getContributionStats:", error);
+        return null;
+    }
 }
-}
-
-

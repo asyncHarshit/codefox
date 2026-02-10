@@ -3,6 +3,7 @@
 import { inngest } from "@/inngest/client";
 import { db } from "@/lib/db"
 import { getPullRequestDiff } from "@/lib/github";
+import { incrementReviewCount } from "@/lib/user-count-uses";
 
 export async function reviewPullRequest(owner : string , repoName : string , prNumber : number){
 
@@ -46,6 +47,8 @@ export async function reviewPullRequest(owner : string , repoName : string , prN
             userId : repository.user.id
         }
     })
+
+    await incrementReviewCount(repository.user.id , repository.id)
 
     return {success : true , message : "PR queued"}
     } catch (error) {

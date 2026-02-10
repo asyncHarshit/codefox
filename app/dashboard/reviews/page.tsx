@@ -1,4 +1,5 @@
 "use client"
+
 import {
   Card,
   CardContent,
@@ -21,6 +22,35 @@ import { useQuery } from "@tanstack/react-query"
 import { getReviews } from "@/module/review/actions"
 import { formatDistanceToNow } from "date-fns"
 
+/* ================= Shimmer Card ================= */
+
+function ReviewCardShimmer() {
+  return (
+    <Card className="flex flex-col">
+      <CardHeader className="pb-3 space-y-3">
+        <div className="flex justify-between gap-3">
+          <div className="h-4 w-40 shimmer rounded" />
+          <div className="h-5 w-20 shimmer rounded-full" />
+        </div>
+        <div className="h-3 w-32 shimmer rounded" />
+      </CardHeader>
+
+      <CardContent className="flex-1 flex flex-col gap-4">
+        <div className="space-y-2">
+          <div className="h-3 w-full shimmer rounded" />
+          <div className="h-3 w-full shimmer rounded" />
+          <div className="h-3 w-4/5 shimmer rounded" />
+          <div className="h-3 w-3/5 shimmer rounded" />
+        </div>
+
+        <div className="h-9 w-full shimmer rounded-lg mt-auto" />
+      </CardContent>
+    </Card>
+  )
+}
+
+/* ================= Page ================= */
+
 export default function ReviewsPage() {
   const { data: reviews, isLoading } = useQuery({
     queryKey: ["reviews"],
@@ -29,17 +59,25 @@ export default function ReviewsPage() {
     },
   })
 
+  /* ---------- SHIMMER STATE ---------- */
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-          <p className="text-sm text-muted-foreground">Loading reviews...</p>
+      <div className="container mx-auto py-8 px-4 max-w-6xl">
+        <div className="mb-8 space-y-3">
+          <div className="h-8 w-48 shimmer rounded" />
+          <div className="h-4 w-96 shimmer rounded" />
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <ReviewCardShimmer key={i} />
+          ))}
         </div>
       </div>
     )
   }
 
+  /* ---------- EMPTY STATE ---------- */
   if (!reviews || reviews.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -56,6 +94,7 @@ export default function ReviewsPage() {
     )
   }
 
+  /* ---------- DATA STATE ---------- */
   return (
     <div className="container mx-auto py-8 px-4 max-w-6xl">
       <div className="mb-8">
@@ -67,12 +106,16 @@ export default function ReviewsPage() {
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {reviews.map((review) => (
-          <Card key={review.id} className="flex flex-col hover:shadow-lg transition-shadow">
+          <Card
+            key={review.id}
+            className="flex flex-col hover:shadow-lg transition-shadow"
+          >
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between gap-2 mb-2">
                 <CardTitle className="text-base line-clamp-2 flex-1">
                   {review.prTitle}
                 </CardTitle>
+
                 <Badge
                   variant={review.status === "completed" ? "default" : "secondary"}
                   className="shrink-0"
@@ -85,27 +128,28 @@ export default function ReviewsPage() {
                   {review.status}
                 </Badge>
               </div>
+
               <CardDescription className="flex items-center gap-2">
                 <span>PR #{review.prNumber}</span>
                 <span>•</span>
                 <span className="flex items-center gap-1">
                   <Clock className="h-3 w-3" />
-                  {formatDistanceToNow(new Date(review.createdAt), { addSuffix: true })}
+                  {formatDistanceToNow(new Date(review.createdAt), {
+                    addSuffix: true,
+                  })}
                 </span>
               </CardDescription>
             </CardHeader>
 
             <CardContent className="flex-1 flex flex-col gap-4">
-              <div className="flex-1">
-                <p className="text-sm text-muted-foreground line-clamp-4">
-                  {review.review}
-                </p>
-              </div>
+              <p className="text-sm text-muted-foreground line-clamp-4">
+                {review.review}
+              </p>
 
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full"
+                className="w-full mt-auto"
                 asChild
               >
                 <a

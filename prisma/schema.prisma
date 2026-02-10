@@ -29,10 +29,27 @@ model User {
   sessions      Session[]
   accounts      Account[]
   repositories  repository[]
+  userUsage     UserUsage?
 
   @@unique([email])
   @@map("user")
 }
+
+model UserUsage {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  repositoryCount Int      @default(0)
+  reviewCounts    Json     @default("{}") // { "repoId": count }
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("user_usage")
+}
+
 
 model repository {
   id        String   @id @default(cuid())
@@ -42,6 +59,7 @@ model repository {
   fullName  String
   url       String
   userId    String
+  isConnected Boolean @default(false)
   reviews   Review[]
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
@@ -67,6 +85,8 @@ model Review {
 
   @@index([repositoryId])
 }
+
+
 
 model Session {
   id        String   @id

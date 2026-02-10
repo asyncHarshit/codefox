@@ -6,6 +6,7 @@ import { useTheme } from "next-themes";
 import { Tooltip } from "react-tooltip";
 import "react-tooltip/dist/react-tooltip.css";
 import { getContributionStats } from "@/module/dashboard/actions/indes";
+import { Loader } from "lucide-react";
 
 const ContributionGraphClient = () => {
   const { theme } = useTheme();
@@ -16,8 +17,13 @@ const ContributionGraphClient = () => {
   });
 
   if (isLoading) {
-    return <div className="p-6">Loading...</div>;
-  }
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <Loader className="h-10 w-10 animate-spin text-primary" />
+    </div>
+  )
+}
+
   if (!data || data.contributions.length === 0) {
     return <div className="p-6">No contribution data available.</div>;
   }
