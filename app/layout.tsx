@@ -1,10 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { ThemeProvider } from "@/components/provider/theme-provider";
-import { QueryProvider } from "@/components/provider/query-provider";
-import { Toaster } from "sonner";
-
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,29 +17,17 @@ export const metadata: Metadata = {
   description: "AI Powered Code Reviewer",
 };
 
-
-
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <QueryProvider>
-        <ThemeProvider
-        attribute={"class"}
-        defaultTheme="system"
-        enableSystem
-        disableTransitionOnChange
-        >
-          <Toaster/>
-          {children}
-        </ThemeProvider>
-        </QueryProvider>
+        {children}
       </body>
     </html>
   );
